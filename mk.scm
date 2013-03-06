@@ -33,10 +33,6 @@
   (syntax-rules ()
     ((_ x) (vector? x))))
 
-(define == 
-  (lambda (u v)
-    (lambdag@ (s) (unify u v s))))
-
 (define empty-s '())
 
 (define walk
@@ -54,20 +50,6 @@
     (cons `(,x . ,v) s)))
 
 (define unify
-  (lambda (v w s)
-    (let ((v (walk v s))
-          (w (walk w s)))
-      (cond
-        ((eq? v w) s)
-        ((var? v) (ext-s v w s))
-        ((var? w) (ext-s w v s))
-        ((and (pair? v) (pair? w))
-         (let ((s (unify (car v) (car w) s)))
-           (and s (unify (cdr v) (cdr w) s))))
-        ((equal? v w) s)
-        (else #f)))))
-
-(define unify-check
   (lambda (u v s)
     (let ((u (walk u s))
           (v (walk v s)))
@@ -76,13 +58,13 @@
         ((var? u) (ext-s-check u v s))
         ((var? v) (ext-s-check v u s))
         ((and (pair? u) (pair? v))
-         (let ((s (unify-check 
+         (let ((s (unify 
                     (car u) (car v) s)))
-           (and s (unify-check 
+           (and s (unify 
                     (cdr u) (cdr v) s))))
         ((equal? u v) s)
         (else #f)))))
- 
+
 (define ext-s-check
   (lambda (x v s)
     (cond
@@ -130,11 +112,6 @@
   (lambda (v s)
     (let ((v (walk* v s)))
       (walk* v (reify-s v empty-s)))))
-
-(define ==-check
-  (lambda (v w)
-    (lambdag@ (s)
-      (unify-check v w s))))
 
 (define-syntax mzero 
   (syntax-rules () ((_) #f)))
@@ -286,4 +263,3 @@
     (condu
       (g succeed)
       ((== #f #f) fail))))
-

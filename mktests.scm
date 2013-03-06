@@ -3813,28 +3813,9 @@ w)
 (lambda (t v) (error 'testc22.tex-25 "infinite loop returned ~s after ~s ticks" v (- max-ticks t)))
 (lambda (e^) (void)))
 
-
-
-(test-check "testc22.tex-26"   
-(run1 (q) 
-  (fresh (x)
-    (== `(,x) x)
-    (== #t q)))
-
-`(#t))
-
-(test-check "testc22.tex-27"   
-(run1 (q)
-  (fresh (x y)
-    (== `(,x) y)
-    (== `(,y) x)
-    (== #t q)))
-
-`(#t))
-
 (test-check "testc22.tex-28"   
 (run1 (x) 
-  (==-check `(,x) x))
+  (== `(,x) x))
 
 `())
 (define e (make-engine (lambda () 
@@ -3855,8 +3836,7 @@ w)
   (fresh (y z)
     (== x z)
     (== `(a b ,z) y)
-    (==-check x y)))
-
+    (== x y)))
 `())
 (define e (make-engine (lambda ()   
 (run1 (x)
