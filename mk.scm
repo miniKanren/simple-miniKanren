@@ -36,14 +36,11 @@
 (define empty-s '())
 
 (define walk
-  (lambda (v s)
+  (lambda (u S)
     (cond
-      ((var? v)
-       (let ((a (assq v s)))
-         (cond
-           (a (walk (rhs a) s))
-           (else v))))
-      (else v))))
+      ((and (var? u) (assq u S)) =>
+       (lambda (pr) (walk (rhs pr) S)))
+      (else u))))
 
 (define ext-s
   (lambda (x v s)
