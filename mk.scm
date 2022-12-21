@@ -13,25 +13,13 @@
   (syntax-rules ()
     ((_ (x) g ...) (run #f (x) g ...))))
 
-(define-syntax rhs
-  (syntax-rules ()
-    ((_ x) (cdr x))))
+(define rhs (lambda (pr) (cdr pr)))
 
-(define-syntax lhs
-  (syntax-rules ()
-    ((_ x) (car x))))
+(define lhs (lambda (pr) (car pr)))
 
-(define-syntax size-s
-  (syntax-rules ()
-    ((_ x) (length x))))
+(define var (lambda (x) (vector x)))
 
-(define-syntax var
-  (syntax-rules ()
-    ((_ x) (vector x))))
-
-(define-syntax var?
-  (syntax-rules ()
-    ((_ x) (vector? x))))
+(define var? (lambda (x) (vector? x)))
 
 (define empty-s '())
 
@@ -95,7 +83,7 @@
     (let ((v (walk v s)))
       (cond
         ((var? v)
-         (ext-s v (reify-name (size-s s)) s))
+         (ext-s v (reify-name (length s)) s))
         ((pair? v) (reify-s (cdr v)
                      (reify-s (car v) s)))
         (else s)))))
@@ -110,17 +98,14 @@
     (let ((v (walk* v s)))
       (walk* v (reify-s v empty-s)))))
 
-(define-syntax mzero 
-  (syntax-rules () ((_) #f)))
+(define mzero (lambda () #f))
 
 (define-syntax inc 
   (syntax-rules () ((_ e) (lambdaf@ () e))))
 
-(define-syntax unit 
-  (syntax-rules () ((_ a) a)))
+(define unit (lambdag@ (c) c))
 
-(define-syntax choice 
-  (syntax-rules () ((_ a f) (cons a f))))
+(define choice (lambda (c f) (cons c f)))
  
 (define-syntax case-inf
   (syntax-rules ()
