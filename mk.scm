@@ -3,7 +3,7 @@
 
 (define-syntax lambdag@
   (syntax-rules ()
-    ((_ (p) e) (lambda (p) e))))
+    ((_ (n p) e) (lambda (n p) e))))
 
 (define-syntax lambdaf@
   (syntax-rules ()
@@ -22,6 +22,8 @@
 (define var? (lambda (x) (vector? x)))
 
 (define empty-s '())
+
+(define negation-counter 0)
 
 (define walk
   (lambda (u S)
@@ -103,7 +105,7 @@
 (define-syntax inc 
   (syntax-rules () ((_ e) (lambdaf@ () e))))
 
-(define unit (lambdag@ (c) c))
+(define unit (lambdag@ (n c) c))
 
 (define choice (lambda (c f) (cons c f)))
  
@@ -126,9 +128,9 @@
      (take n
        (lambdaf@ ()
          ((fresh (x) g0 g ... 
-            (lambdag@ (s)
+            (lambdag@ (negation-counter s)
               (cons (reify x s) '())))
-          empty-s))))))
+          negation-counter empty-s))))))
  
 (define take
   (lambda (n f)
@@ -144,38 +146,38 @@
 
 (define ==
   (lambda (u v)
-    (lambdag@ (s)
+    (lambdag@ (n s)
       (unify u v s))))
  
 (define-syntax fresh
   (syntax-rules ()
     ((_ (x ...) g0 g ...)
-     (lambdag@ (s)
+     (lambdag@ (n s)
        (inc
          (let ((x (var 'x)) ...)
-           (bind* (g0 s) g ...)))))))
+           (bind* n (g0 n s) g ...)))))))
  
 (define-syntax bind*
   (syntax-rules ()
-    ((_ e) e)
-    ((_ e g0 g ...) (bind* (bind e g0) g ...))))
+    ((_ n e) e)
+    ((_ n e g0 g ...) (bind* n (bind n e g0) g ...))))
  
 (define bind
-  (lambda (a-inf g)
+  (lambda (n a-inf g)
     (case-inf a-inf
       (() (mzero))
-      ((f) (inc (bind (f) g)))
-      ((a) (g a))
-      ((a f) (mplus (g a) (lambdaf@ () (bind (f) g)))))))
+      ((f) (inc (bind n (f) g)))
+      ((a) (g n a))
+      ((a f) (mplus (g n a) (lambdaf@ () (bind n (f) g)))))))
 
 (define-syntax conde
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (s) 
+     (lambdag@ (n s) 
        (inc 
          (mplus* 
-           (bind* (g0 s) g ...)
-           (bind* (g1 s) g^ ...) ...))))))
+           (bind* n (g0 n s) g ...)
+           (bind* n (g1 n s) g^ ...) ...))))))
  
 (define-syntax mplus*
   (syntax-rules ()
@@ -194,47 +196,47 @@
 (define-syntax conda
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (s)
+     (lambdag@ (n s)
        (inc
-         (ifa ((g0 s) g ...)
-              ((g1 s) g^ ...) ...))))))
+         (ifa n ((g0 n s) g ...)
+                ((g1 n s) g^ ...) ...))))))
  
 (define-syntax ifa
   (syntax-rules ()
-    ((_) (mzero))
-    ((_ (e g ...) b ...)
+    ((_ n) (mzero))
+    ((_ n (e g ...) b ...)
      (let loop ((a-inf e))
        (case-inf a-inf
-         (() (ifa b ...))
+         (() (ifa n b ...))
          ((f) (inc (loop (f))))
-         ((a) (bind* a-inf g ...))
-         ((a f) (bind* a-inf g ...)))))))
+         ((a) (bind* n a-inf g ...))
+         ((a f) (bind* n a-inf g ...)))))))
 
 (define-syntax condu
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (s)
+     (lambdag@ (n s)
        (inc
-         (ifu ((g0 s) g ...)
-              ((g1 s) g^ ...) ...))))))
+         (ifu n ((g0 n s) g ...)
+                ((g1 n s) g^ ...) ...))))))
  
 (define-syntax ifu
   (syntax-rules ()
-    ((_) (mzero))
-    ((_ (e g ...) b ...)
+    ((_ n) (mzero))
+    ((_ n (e g ...) b ...)
      (let loop ((a-inf e))
        (case-inf a-inf
-         (() (ifu b ...))
+         (() (ifu n b ...))
          ((f) (inc (loop (f))))
-         ((a) (bind* a-inf g ...))
-         ((a f) (bind* (unit a) g ...)))))))
+         ((a) (bind* n a-inf g ...))
+         ((a f) (bind* n (unit n a) g ...)))))))
 
 (define-syntax project
   (syntax-rules ()
     ((_ (x ...) g g* ...)
-     (lambdag@ (s)
+     (lambdag@ (n s)
        (let ((x (walk* x s)) ...)
-         ((fresh () g g* ...) s))))))
+         ((fresh () g g* ...) n s))))))
 
 (define succeed (== #f #f))
 
