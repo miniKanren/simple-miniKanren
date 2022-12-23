@@ -147,8 +147,18 @@
 (define ==
   (lambda (u v)
     (lambdag@ (n s)
-      (unify u v s))))
- 
+      (if (even? n)
+        (cond
+          [(unify u v s) => 
+            (lambda (s+) 
+              (unit 0 s+))]
+          [else (mzero)])
+        (cond
+          [(unify u v s) => 
+            (lambda (s+) 
+              (mzero))]
+          [else (unit n s)])))))
+
 (define-syntax fresh
   (syntax-rules ()
     ((_ (x ...) g0 g ...)
