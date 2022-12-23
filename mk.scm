@@ -247,3 +247,9 @@
     (condu
       (g succeed)
       ((== #f #f) fail))))
+
+(define-syntax noto
+  (syntax-rules ()
+    ((noto (name args ...))
+      (lambdag@ (n s)
+        ((name args ...) (+ 1 n) s)))))
