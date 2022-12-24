@@ -108,7 +108,7 @@
 (define-syntax inc 
   (syntax-rules () ((_ e) (lambdaf@ () e))))
 
-(define unit (lambdag@ (n cfs c) c))
+(define unit (lambda (c) c))
 
 (define choice (lambda (c f) (cons c f)))
  
@@ -154,13 +154,13 @@
         (cond
           [(unify u v s) => 
             (lambda (s+) 
-              (unit 0 cfs s+))]
+              (unit s+))]
           [else (mzero)])
         (cond
           [(unify u v s) => 
             (lambda (s+) 
               (mzero))]
-          [else (unit n cfs s)])))))
+          [else (unit s)])))))
 
 (define-syntax fresh
   (syntax-rules ()
@@ -258,7 +258,7 @@
          (() (ifu n cfs b ...))
          ((f) (inc (loop (f))))
          ((a) (bind* n cfs a-inf g ...))
-         ((a f) (bind* n cfs (unit n cfs a) g ...)))))))
+         ((a f) (bind* n cfs (unit a) g ...)))))))
 
 (define-syntax project
   (syntax-rules ()
