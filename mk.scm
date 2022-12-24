@@ -188,6 +188,22 @@
          (mplus* 
            (bind* n (g0 n s) g ...)
            (bind* n (g1 n s) g^ ...) ...))))))
+
+;;; Turns conjunction of goals (g0, g, ...) into disjunction of goals (g0; g; ...).
+(define-syntax conde-t
+  (syntax-rules ()
+    ((_ (g0 g ...) (g1 g^ ...) ...)
+     (fresh ()
+       (conde [g0] [g] ...)
+       (conde [g1] [g^] ...) ...))))
+
+;;; Transform the original rule to the complement form.
+(define-syntax complement
+  (syntax-rules (conde)
+    ((_ (conde (g0 g ...) (g1 g^ ...) ...)) 
+     (conde-t (g0 g ...) (g1 g^ ...) ...))
+    ((_ g0 g ...)
+     (conde-t (g0 g ...)))))
  
 (define-syntax mplus*
   (syntax-rules ()
@@ -263,3 +279,19 @@
     ((noto (name args ...))
       (lambdag@ (n s)
         ((name args ...) (+ 1 n) s)))))
+
+(define-syntax defineo
+  (syntax-rules ()
+    ((_ (name args ...) exp ...)
+      ;;; Define a goal function with the original rules "exp ...", and the 
+      ;;; complement rules "complement exp ..."
+      (define name (lambda (args ...)
+        (lambdag@ (n s)
+          ;;; During the execution, the goal function picks the corresponding
+          ;;; rule set based on the value of the negation counter.
+          ;;;   n >= 0 and even, use original rules
+          ;;;   n >= 0 and odd, use complement rules
+          ((cond ((even? n) (fresh () exp ...))
+                 ((odd? n) (complement exp ...))
+                 (else fail))
+            n s)))))))

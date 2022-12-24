@@ -48,3 +48,23 @@
 (run* (q) (p 2) )
 
 (list `_.0))
+
+;;; Add new language construct 'defineo', so we can implicitly perform the rule
+;;; translation.
+(defineo (s) fail)
+(defineo (r) fail)
+(defineo (q)
+  (conde
+    [(noto (r))]
+    [(s)]))
+(defineo (p) (noto (q)))
+
+(test-check "testnaf.tex-7"   
+(run* (x) (p) )
+
+`())
+
+(test-check "testnaf.tex-8"   
+(run* (x) (q) )
+
+(list `_.0))
