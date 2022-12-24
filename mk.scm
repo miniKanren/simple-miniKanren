@@ -4,7 +4,7 @@
 
 (define-syntax lambdag@
   (syntax-rules ()
-    ((_ (n p) e) (lambda (n p) e))))
+    ((_ (n cfs s) e) (lambda (n cfs s) e))))
 
 (define-syntax lambdaf@
   (syntax-rules ()
@@ -25,6 +25,8 @@
 (define empty-s '())
 
 (define negation-counter 0)
+
+(define call-frame-stack '())
 
 (define walk
   (lambda (u S)
@@ -106,7 +108,7 @@
 (define-syntax inc 
   (syntax-rules () ((_ e) (lambdaf@ () e))))
 
-(define unit (lambdag@ (n c) c))
+(define unit (lambdag@ (n cfs c) c))
 
 (define choice (lambda (c f) (cons c f)))
  
@@ -129,9 +131,9 @@
      (take n
        (lambdaf@ ()
          ((fresh (x) g0 g ... 
-            (lambdag@ (negation-counter s)
+            (lambdag@ (negation-counter call-frame-stack s)
               (cons (reify x s) '())))
-          negation-counter empty-s))))))
+          negation-counter call-frame-stack empty-s))))))
  
 (define take
   (lambda (n f)
@@ -147,48 +149,48 @@
 
 (define ==
   (lambda (u v)
-    (lambdag@ (n s)
+    (lambdag@ (n cfs s)
       (if (even? n)
         (cond
           [(unify u v s) => 
             (lambda (s+) 
-              (unit 0 s+))]
+              (unit 0 cfs s+))]
           [else (mzero)])
         (cond
           [(unify u v s) => 
             (lambda (s+) 
               (mzero))]
-          [else (unit n s)])))))
+          [else (unit n cfs s)])))))
 
 (define-syntax fresh
   (syntax-rules ()
     ((_ (x ...) g0 g ...)
-     (lambdag@ (n s)
+     (lambdag@ (n cfs s)
        (inc
          (let ((x (var 'x)) ...)
-           (bind* n (g0 n s) g ...)))))))
+           (bind* n cfs (g0 n cfs s) g ...)))))))
  
 (define-syntax bind*
   (syntax-rules ()
-    ((_ n e) e)
-    ((_ n e g0 g ...) (bind* n (bind n e g0) g ...))))
+    ((_ n cfs e) e)
+    ((_ n cfs e g0 g ...) (bind* n cfs (bind n cfs e g0) g ...))))
  
 (define bind
-  (lambda (n a-inf g)
+  (lambda (n cfs a-inf g)
     (case-inf a-inf
       (() (mzero))
-      ((f) (inc (bind n (f) g)))
-      ((a) (g n a))
-      ((a f) (mplus (g n a) (lambdaf@ () (bind n (f) g)))))))
+      ((f) (inc (bind n cfs (f) g)))
+      ((a) (g n cfs a))
+      ((a f) (mplus (g n cfs a) (lambdaf@ () (bind n cfs (f) g)))))))
 
 (define-syntax conde
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (n s) 
+     (lambdag@ (n cfs s) 
        (inc 
          (mplus* 
-           (bind* n (g0 n s) g ...)
-           (bind* n (g1 n s) g^ ...) ...))))))
+           (bind* n cfs (g0 n cfs s) g ...)
+           (bind* n cfs (g1 n cfs s) g^ ...) ...))))))
 
 ;;; Turns conjunction of goals (g0, g, ...) into disjunction of goals (g0; g; ...).
 (define-syntax conde-t
@@ -223,47 +225,47 @@
 (define-syntax conda
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (n s)
+     (lambdag@ (n cfs s)
        (inc
-         (ifa n ((g0 n s) g ...)
-                ((g1 n s) g^ ...) ...))))))
+         (ifa n cfs ((g0 n cfs s) g ...)
+                   ((g1 n cfs s) g^ ...) ...))))))
  
 (define-syntax ifa
   (syntax-rules ()
-    ((_ n) (mzero))
-    ((_ n (e g ...) b ...)
+    ((_ n cfs) (mzero))
+    ((_ n cfs (e g ...) b ...)
      (let loop ((a-inf e))
        (case-inf a-inf
-         (() (ifa n b ...))
+         (() (ifa n cfs b ...))
          ((f) (inc (loop (f))))
-         ((a) (bind* n a-inf g ...))
-         ((a f) (bind* n a-inf g ...)))))))
+         ((a) (bind* n cfs a-inf g ...))
+         ((a f) (bind* n cfs a-inf g ...)))))))
 
 (define-syntax condu
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (n s)
+     (lambdag@ (n cfs s)
        (inc
-         (ifu n ((g0 n s) g ...)
-                ((g1 n s) g^ ...) ...))))))
+         (ifu n cfs ((g0 n cfs s) g ...)
+                   ((g1 n cfs s) g^ ...) ...))))))
  
 (define-syntax ifu
   (syntax-rules ()
-    ((_ n) (mzero))
-    ((_ n (e g ...) b ...)
+    ((_ n cfs) (mzero))
+    ((_ n cfs (e g ...) b ...)
      (let loop ((a-inf e))
        (case-inf a-inf
-         (() (ifu n b ...))
+         (() (ifu n cfs b ...))
          ((f) (inc (loop (f))))
-         ((a) (bind* n a-inf g ...))
-         ((a f) (bind* n (unit n a) g ...)))))))
+         ((a) (bind* n cfs a-inf g ...))
+         ((a f) (bind* n cfs (unit n cfs a) g ...)))))))
 
 (define-syntax project
   (syntax-rules ()
     ((_ (x ...) g g* ...)
-     (lambdag@ (n s)
+     (lambdag@ (n cfs s)
        (let ((x (walk* x s)) ...)
-         ((fresh () g g* ...) n s))))))
+         ((fresh () g g* ...) n cfs s))))))
 
 (define succeed (== #f #f))
 
@@ -278,8 +280,8 @@
 (define-syntax noto
   (syntax-rules ()
     ((noto (name args ...))
-      (lambdag@ (n s)
-        ((name args ...) (+ 1 n) s)))))
+      (lambdag@ (n cfs s)
+        ((name args ...) (+ 1 n) cfs s)))))
 
 (define-syntax defineo
   (syntax-rules ()
@@ -287,7 +289,7 @@
       ;;; Define a goal function with the original rules "exp ...", and the 
       ;;; complement rules "complement exp ..."
       (define name (lambda (args ...)
-        (lambdag@ (n s)
+        (lambdag@ (n cfs s)
           ;;; During the execution, the goal function picks the corresponding
           ;;; rule set based on the value of the negation counter.
           ;;;   n >= 0 and even, use original rules
@@ -295,4 +297,4 @@
           ((cond ((even? n) (fresh () exp ...))
                  ((odd? n) (complement exp ...))
                  (else fail))
-            n s)))))))
+            n cfs s)))))))
