@@ -28,6 +28,9 @@
 
 (define call-frame-stack '())
 
+(define (expand-cfs k v cfs)
+  (adjoin-set (make-record k v) cfs))
+
 (define walk
   (lambda (u S)
     (cond
@@ -279,22 +282,41 @@
 
 (define-syntax noto
   (syntax-rules ()
-    ((noto (name args ...))
+    ((noto (name params ...))
       (lambdag@ (n cfs s)
-        ((name args ...) (+ 1 n) cfs s)))))
+        ((name params ...) (+ 1 n) cfs s)))))
 
 (define-syntax defineo
   (syntax-rules ()
-    ((_ (name args ...) exp ...)
+    ((_ (name params ...) exp ...)
       ;;; Define a goal function with the original rules "exp ...", and the 
       ;;; complement rules "complement exp ..."
-      (define name (lambda (args ...)
+      (define name (lambda (params ...)
+        ;;; Obtain a list of argument variables.
+        (let ([argv (list params ...)])
         (lambdag@ (n cfs s)
-          ;;; During the execution, the goal function picks the corresponding
-          ;;; rule set based on the value of the negation counter.
-          ;;;   n >= 0 and even, use original rules
-          ;;;   n >= 0 and odd, use complement rules
-          ((cond ((even? n) (fresh () exp ...))
-                 ((odd? n) (complement exp ...))
-                 (else fail))
-            n cfs s)))))))
+          ;;; Concrete the variables to values.
+          ;;; If the variable has a substituition it will be replaced with a 
+          ;;; value, otherwise it will be the parameter's name.
+          (let* ([args (map (lambda (arg)
+                             (walk* arg s))
+                           argv)]
+                 [signature (list `name args)]
+                 [record (element-of-set? signature cfs)])
+          ;;; Before the execution, check if the goal we have encountered during
+          ;;; the solving process.
+          (if (and record #t)
+            (let ([diff (- n (get-value record))])
+            (cond
+              ;;; Positive loop. Minimal model semantics specified the positive
+              ;;; loop should return false.
+              [(and (= 0 diff) (even? n)) (mzero)]
+              [(and (= 0 diff) (odd? n)) (unit s)]))
+            ;;; During the execution, the goal function picks the corresponding
+            ;;; rule set based on the value of the negation counter.
+            ;;;   n >= 0 and even, use original rules
+            ;;;   n >= 0 and odd, use complement rules
+            ((cond ((even? n) (fresh () exp ...))
+                   ((odd? n) (complement exp ...))
+                   (else fail))
+              n (expand-cfs signature n cfs) s))))))))))
