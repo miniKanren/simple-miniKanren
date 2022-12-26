@@ -172,6 +172,63 @@
        (inc
          (let ((x (var 'x)) ...)
            (bind* n cfs (g0 n cfs s) g ...)))))))
+
+;;; Our previous implementation of complement and conde-t applies the DeMorgan 
+;;; rule on the disjunction of a set of rules in conjunctive normal form (CNF).
+;;; The transformation only works for propositional logic. To evolve the
+;;; transformer to fully support predicate logic, we need to handle the rule
+;;; with a "fresh" (existential quantifier) operator.
+(define-syntax complement-fresh
+  (syntax-rules (fresh)
+    ((_ (fresh (x ...) g0 g ...)) (fresh (x ...)
+                                      (fresh-t (x ...) g0 g ...)))
+    ;;; Rule without "fresh", can directly apply DeMorgan law.
+    ((_ g0 g ...) (conde [g0] [g] ...))))
+
+;;; The existential quantifier introduces a new temporary variable in the body 
+;;; of the rule. Therefore, we can't simply apply the DeMorgan law as we did for
+;;; the propositional program. The temporary variable may or may not bind to a
+;;; value during the evaluation process; a predicate can serve as a generator to
+;;; assign a value to the temporary variable or as a checker to check the value
+;;; of the temporary variable still holds.
+;;;
+;;; For example,
+;;; edge(a, b), edge(b, c), edge(a, d).
+;;;
+;;; reachable(X, Y) :- edge(X, Y).
+;;; reachable(X, Y) :- edge(X, Z), reachable(Z, Y).
+;;;
+;;; reducible(X) :- reachable(X, Y), not reachable(Y, X).
+;;;
+;;; The former predicates edge(X, Z), and reachable(X, Y) in rule "reachable" 
+;;; and "reducible" respectively, are served as the generator. The latter
+;;; predicates edge(Z, Y) and reachable(Y, X) are served as the checker.
+;;; The complement of the generator is simple. "There is an edge(X, Z)" to 
+;;; "There is *no* edge(X, Z).", but the complement of the checker needs to 
+;;; include the mutually exclusive of the first part. "If there is an edge(X, Z),
+;;; then it is not reachable(Z, Y)."
+;;;
+;;; The complement rule of "reachable" is saying that "There is no exist such Z,
+;;; that edge(X, Z) and reachable(Z, Y) is true." The equivalent statement is
+;;; "For all values of Z, that there is *no* edge(X, Z), or if there is 
+;;; an edge(X, Z), then it is not reachable(Z, Y)."
+(define-syntax fresh-t
+  (syntax-rules ()
+    ;;; So the complement of fresh should be a disjunction of the negation to
+    ;;; each sub-goal in conjunction with all sub-goals before the current one.
+    ;;;
+    ;;; Note: fresh-t is working as "not exist", so the negation counter carries
+    ;;; an implicit negation with an odd number during the runtime.
+    ;;; Hence, "g0" means "not g0", solving the negative goal, and
+    ;;;   "noto g0" means "g0", solving the positive goal.
+    ((_ (x ...) g0)
+     g0)
+    ((_ (x ...) g0 g ...)
+     (conde 
+       [g0] 
+       [(fresh ()
+        (noto g0)
+        (fresh-t (x ...) g ...))]))))
  
 (define-syntax bind*
   (syntax-rules ()
@@ -200,8 +257,8 @@
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
      (fresh ()
-       (conde [g0] [g] ...)
-       (conde [g1] [g^] ...) ...))))
+       (complement-fresh g0 g ...)
+       (complement-fresh g1 g^ ...) ...))))
 
 ;;; Transform the original rule to the complement form.
 (define-syntax complement

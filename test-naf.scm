@@ -136,3 +136,16 @@
   (f i) (a i) (a f) (f f) (a k) (f h) (f k) (a h) (g h) (g g)
   (f h) (f g) (f i) (f h) (h h) (i i) (g i) (g f) (g k) (h i)
   (i h) (g h)))
+
+;reducible(X) :- reachable(X,Y), not reachable(Y,X).
+(defineo (reducible x)
+  (conde
+   [(fresh (y) (reachable x y) (noto (reachable y x)))]))
+
+(test-check "testnaf.tex-10b"   
+(run 1 (q) (reducible 'a) (reducible 'b) (reducible 'g) (reducible 'f) 
+           (noto (reducible 'c)) (noto (reducible 'd)) (noto (reducible 'e))
+           (noto (reducible 'h)) (noto (reducible 'i)) (noto (reducible 'k)) )
+
+(list `_.0))
+
