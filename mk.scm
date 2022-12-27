@@ -182,8 +182,10 @@
   (syntax-rules (fresh)
     ((_ (fresh (x ...) g0 g ...)) (fresh (x ...)
                                       (fresh-t (x ...) g0 g ...)))
-    ;;; Rule without "fresh", can directly apply DeMorgan law.
-    ((_ g0 g ...) (conde [g0] [g] ...))))
+    ;;; For predicate logic, even for the rule without "fresh" can't directly 
+    ;;; apply DeMorgan law. The two variables in one predicate are related to 
+    ;;; each other. 
+    ((_ g0 g ...) (fresh-t () g0 g ...))))
 
 ;;; The existential quantifier introduces a new temporary variable in the body 
 ;;; of the rule. Therefore, we can't simply apply the DeMorgan law as we did for

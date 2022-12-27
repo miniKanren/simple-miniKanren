@@ -113,8 +113,7 @@
     [(== x 'g) (== y 'f)]
     [(== x 'g) (== y 'k)]
     [(== x 'h) (== y 'i)]
-    [(== x 'i) (== y 'h)]
-  ))
+    [(== x 'i) (== y 'h)]))
 
 ;reachable(X,Y) :- reduce(X,Y).
 ;reachable(X,Y) :- reachable(X,Z), reduce(Z,Y).
@@ -149,3 +148,9 @@
 
 (list `_.0))
 
+; test run* to get all answers.
+(test-check "testnaf.tex-10c"   
+(run* (q) (reducible q) )
+
+`(a b a f a a g a b a a b a b a a a a f a a a a a f f f a g g
+ f f f g g g))
