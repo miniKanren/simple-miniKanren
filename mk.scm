@@ -4,7 +4,7 @@
 
 (define-syntax lambdag@
   (syntax-rules ()
-    ((_ (n cfs s) e) (lambda (n cfs s) e))))
+    ((_ (n cfs s) e ...) (lambda (n cfs s) e ...))))
 
 (define-syntax lambdaf@
   (syntax-rules ()
@@ -173,6 +173,54 @@
          (let ((x (var 'x)) ...)
            (bind* n cfs (g0 n cfs s) g ...)))))))
 
+;;; It's a recursive process that iterates through all values of the bounded
+;;; temporary variables and creates an incomplete stream(inc) of 
+;;; conjunction(bind*) over the future sub-goals under the current value and 
+;;; the future sub-goals under other values.
+(define-syntax forall
+  (syntax-rules ()
+    [(_ (x ...) (g ...) vars)
+      ; Removing all vars from (x ...), get the remaining temporary variables.
+      (let ([var-list (remove-var-from-list (list x ...) vars)])
+        (define (iterate-values values)
+          (lambdag@ (n cfs s)
+            (if (null? values)
+              s
+              (inc (bind* n cfs
+                  ; The remaining temporary variables need "fresh-t" again.
+                ((fresh-t (var-list) g ...) n cfs
+                  ; So we can extend vars with all variables by ourselves.
+                  (ext-s-for-all-vars vars (car values) s))
+                  (iterate-values (cdr values)))))))
+        iterate-values)]))
+
+;;; This macro uses the generator "g0", bounded variables, current CFS, and 
+;;; current substitution to construct an internal program to generate all values.
+;;; The "take #f" is the underlying implementation of the "run*" interface,
+;;; please refer to the "run*"" implementation to learn more details.
+;;;
+;;; For example,
+;;; edge(a, b), edge(b, c), edge(a, d).
+;;; 
+;;; > (run* (q) (fresh (x y) (edge x y) (== q `(,x ,y))))
+;;; ((a b) (b c) (a d))
+(define-syntax domain-values
+  (syntax-rules ()
+    [(_ g0 bounded-vars cfs s)
+     (take #f (lambdaf@ ()
+        ; Here, (fresh (tmp)) is the same as (q) in the example.
+        ((fresh (tmp)
+          ; g0 is the actual goal during the runtime (edge x y) in the example.
+          g0
+          ; bounded-vars is a list of temporary variables we created, like the
+          ; (fresh (x y)) in the example.
+          ; So, (== tmp bounded-vars) is the same as (== q `(,x ,y)).
+          (== tmp bounded-vars)
+          ; Eventually, we reify the tmp variable to get all values.
+          (lambdag@ (dummy_n dummy_cfs final-s)
+            (cons (reify tmp final-s) '())))
+          negation-counter cfs s)))]))
+
 ;;; Our previous implementation of complement and conde-t applies the DeMorgan 
 ;;; rule on the disjunction of a set of rules in conjunctive normal form (CNF).
 ;;; The transformation only works for propositional logic. To evolve the
@@ -228,9 +276,30 @@
     ((_ (x ...) g0 g ...)
      (conde 
        [g0] 
-       [(fresh ()
-        (noto g0)
-        (fresh-t (x ...) g ...))]))))
+       ;;; Before executing "g0", we saved the current context.
+       [(lambdag@ (n cfs s)
+          ((fresh ()
+            ; Run g0
+            (noto g0)
+            ;;; After executing "g0", we are comparing the two context.
+            (lambdag@ (nn ff ss)
+                     ; Diff the length of two substitutions.
+              (let* ([diff (- (length ss) (length s))]
+                     ; Use the diff to get difference of the two lists.
+                     [extended-s (get-first-n-elements ss diff)]
+                     ; Use the list to get bounded temporary variables.
+                     [argv (list x ...)]
+                     [bounded-vars (find-bound-vars argv extended-s)])
+                ; Check if any (x ...) got a value.
+                (if (null? bounded-vars)
+                  ; if not keep running future sub-goals (g ...).
+                  ((fresh-t (x ...) g ...) nn ff ss)
+                  ; if so get all values of the variables.
+                  ; check all future sub-goals (g ...) can be proven true for 
+                  ; ALL values of bounded-vars.
+                  (((forall (x ...) (g ...) bounded-vars) 
+                    (domain-values g0 bounded-vars cfs s)) n cfs s))))
+          ) n cfs s))]))))
  
 (define-syntax bind*
   (syntax-rules ()
