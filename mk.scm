@@ -439,7 +439,12 @@
               ;;; Positive loop. Minimal model semantics specified the positive
               ;;; loop should return false.
               [(and (= 0 diff) (even? n)) (mzero)]
-              [(and (= 0 diff) (odd? n)) (unit s)]))
+              [(and (= 0 diff) (odd? n)) (unit s)]
+              ;;; Negative loop. Stable model semantics specified the odd loop
+              ;;; should return false and the even loop should return choice of
+              ;;; true or false.
+              [(and (not (= 0 diff)) (odd? n)) (mzero)]
+              [(and (not (= 0 diff)) (even? n)) (choice s mzero)]))
             ;;; During the execution, the goal function picks the corresponding
             ;;; rule set based on the value of the negation counter.
             ;;;   n >= 0 and even, use original rules
