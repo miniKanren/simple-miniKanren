@@ -122,19 +122,14 @@
     [(reduce x y)]
     [(fresh (z) (reduce x z) (reachable z y))]))
 
-; (a b) (a c) (a d) (a e) (a f) (a g) (a h) (a i) (a k) (b c) (b d) (b e) (c c) 
-; (c d) (c e) (d c) (d d) (d e) (e c) (e d) (e e) (f f) (f g) (f h) (f i) (f k) 
-; (g f) (g g) (g h) (g i) (g k) (h h) (h i) (i h) (i i)
-; [ToDo]: sort and unique the result set.
 (test-check "testnaf.tex-10a"   
-(run* (q) (fresh (x y) (reachable x y) (== q `(,x ,y))) )
+(sort compare-element (remove-duplicates
+  (run* (q) (fresh (x y) (reachable x y) (== q `(,x ,y))) )))
 
-`((a b) (b c) (c d) (d e) (e c) (a f) (f h) (f g) (g f) (g k)
-  (h i) (i h) (a c) (b d) (a d) (a e) (c e) (b e) (a c) (b c)
-  (d c) (c c) (c d) (e d) (d d) (d e) (a h) (e e) (a g) (e c)
-  (f i) (a i) (a f) (f f) (a k) (f h) (f k) (a h) (g h) (g g)
-  (f h) (f g) (f i) (f h) (h h) (i i) (g i) (g f) (g k) (h i)
-  (i h) (g h)))
+`((a b) (a c) (a d) (a e) (a f) (a g) (a h) (a i) (a k) (b c)
+  (b d) (b e) (c c) (c d) (c e) (d c) (d d) (d e) (e c) (e d)
+  (e e) (f f) (f g) (f h) (f i) (f k) (g f) (g g) (g h) (g i)
+  (g k) (h h) (h i) (i h) (i i)))
 
 ;reducible(X) :- reachable(X,Y), not reachable(Y,X).
 (defineo (reducible x)
@@ -150,9 +145,10 @@
 
 ; test run* to get all answers.
 (test-check "testnaf.tex-10c"   
-(run* (q) (reducible q) )
+(sort compare-element (remove-duplicates 
+  (run* (q) (reducible q) )))
 
-`(a b f g a a a a a b a a b a b a f a a a a a a f f a a a a a g f f f g g g))
+`(a b f g))
 
 ;fullyReduce(X,Y) :- reachable(X,Y), not reducible(Y).
 (defineo (fullyReduce x y)
@@ -161,15 +157,9 @@
 
 ; test final-SCC problem run* to get all final-SCC.
 (test-check "testnaf.tex-10d"   
-(run* (q) (fresh (x y) (fullyReduce x y) (== q `(,x ,y))) )
+(sort compare-element (remove-duplicates 
+  (run* (q) (fresh (x y) (fullyReduce x y) (== q `(,x ,y))) )))
 
-`((b c) (b c) (b c) (c d) (c d) (c d) (d e) (d e) (d e) (e c)
-  (e c) (e c) (f h) (f h) (g k) (h i) (h i) (i h) (i h) (a c)
-  (a c) (a c) (b d) (b d) (b d) (a d) (a d) (a d) (a e) (a e)
-  (a e) (c e) (c e) (c e) (b e) (b e) (b e) (a c) (a c) (a c)
-  (b c) (b c) (b c) (d c) (d c) (d c) (c c) (c c) (c c) (c d)
-  (c d) (c d) (e d) (e d) (e d) (d d) (d d) (d d) (d e) (a h)
-  (a h) (d e) (d e) (e e) (e e) (e e) (e c) (f i) (f i) (e c)
-  (e c) (a i) (a i) (a k) (f h) (f h) (f k) (a h) (a h) (g h)
-  (g h) (f h) (f h) (f i) (f i) (f h) (f h) (h h) (h h) (i i)
-  (i i) (g i) (g i) (g k) (h i) (h i) (i h) (g h) (i h) (g h)))
+`((a c) (a d) (a e) (a h) (a i) (a k) (b c) (b d) (b e) (c c)
+  (c d) (c e) (d c) (d d) (d e) (e c) (e d) (e e) (f h) (f i)
+  (f k) (g h) (g i) (g k) (h h) (h i) (i h) (i i)))

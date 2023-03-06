@@ -64,3 +64,15 @@
         (else 
           (cons (car var-list) 
                 (remove-var-from-list (cdr var-list) var-to-remove)))))
+
+;;; Remove duplicates in the list.
+(define (remove-duplicates l)
+  (cond ((null? l) `())
+        ((member (car l) (cdr l))
+          (remove-duplicates (cdr l)))
+        (else
+          (cons (car l) (remove-duplicates (cdr l))))))
+
+;;; Comparison function for sorting.
+(define (compare-element lhs rhs)
+  (string<? (format "~a" lhs) (format "~a" rhs)))
