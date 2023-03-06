@@ -4,7 +4,12 @@
 
 (define-syntax lambdag@
   (syntax-rules ()
-    ((_ (n cfs s) e ...) (lambda (n cfs s) e ...))))
+    ((_ (n cfs c) e ...) (lambda (n cfs c) e ...))
+    ((_ (n cfs c : S P) e ...)
+     (lambda (n cfs c)
+      (let ([S (c->S c)]
+            [P (c->P c)])
+        e ...)))))
 
 (define-syntax lambdaf@
   (syntax-rules ()
@@ -22,7 +27,13 @@
 
 (define var? (lambda (x) (vector? x)))
 
+(define c->S (lambda (c) (car c)))
+
+(define c->P (lambda (c) (cadr c)))
+
 (define empty-s '())
+
+(define empty-c '(() ()))
 
 (define negation-counter 0)
 
@@ -134,9 +145,9 @@
      (take n
        (lambdaf@ ()
          ((fresh (x) g0 g ... 
-            (lambdag@ (negation-counter call-frame-stack s)
-              (cons (reify x s) '())))
-          negation-counter call-frame-stack empty-s))))))
+            (lambdag@ (negation-counter call-frame-stack c : S P)
+              (cons (reify x S) '())))
+          negation-counter call-frame-stack empty-c))))))
  
 (define take
   (lambda (n f)
@@ -152,26 +163,26 @@
 
 (define ==
   (lambda (u v)
-    (lambdag@ (n cfs s)
+    (lambdag@ (n cfs c : S P)
       (if (even? n)
         (cond
-          [(unify u v s) => 
+          [(unify u v S) => 
             (lambda (s+) 
-              (unit s+))]
+              (unit (list s+ P)))]
           [else (mzero)])
         (cond
-          [(unify u v s) => 
+          [(unify u v S) => 
             (lambda (s+) 
               (mzero))]
-          [else (unit s)])))))
+          [else (unit c)])))))
 
 (define-syntax fresh
   (syntax-rules ()
     ((_ (x ...) g0 g ...)
-     (lambdag@ (n cfs s)
+     (lambdag@ (n cfs c)
        (inc
          (let ((x (var 'x)) ...)
-           (bind* n cfs (g0 n cfs s) g ...)))))))
+           (bind* n cfs (g0 n cfs c) g ...)))))))
 
 ;;; It's a recursive process that iterates through all values of the bounded
 ;;; temporary variables and creates an incomplete stream(inc) of 
@@ -183,14 +194,14 @@
       ; Removing all vars from (x ...), get the remaining temporary variables.
       (let ([var-list (remove-var-from-list (list x ...) vars)])
         (define (iterate-values values)
-          (lambdag@ (n cfs s)
+          (lambdag@ (n cfs c : S P)
             (if (null? values)
-              s
+              c
               (inc (bind* n cfs
                   ; The remaining temporary variables need "fresh-t" again.
                 ((fresh-t (var-list) g ...) n cfs
                   ; So we can extend vars with all variables by ourselves.
-                  (ext-s-for-all-vars vars (car values) s))
+                  (list (ext-s-for-all-vars vars (car values) S) P))
                   (iterate-values (cdr values)))))))
         iterate-values)]))
 
@@ -217,8 +228,8 @@
           ; So, (== tmp bounded-vars) is the same as (== q `(,x ,y)).
           (== tmp bounded-vars)
           ; Eventually, we reify the tmp variable to get all values.
-          (lambdag@ (dummy_n dummy_cfs final-s)
-            (cons (reify tmp final-s) '())))
+          (lambdag@ (dummy_n dummy_cfs c : S P)
+            (cons (reify tmp S) '())))
           negation-counter cfs s)))]))
 
 ;;; Our previous implementation of complement and conde-t applies the DeMorgan 
@@ -277,29 +288,29 @@
      (conde 
        [g0] 
        ;;; Before executing "g0", we saved the current context.
-       [(lambdag@ (n cfs s)
+       [(lambdag@ (n cfs c : S P)
           ((fresh ()
             ; Run g0
             (noto g0)
             ;;; After executing "g0", we are comparing the two context.
-            (lambdag@ (nn ff ss)
+            (lambdag@ (nn ff cc : SS PP)
                      ; Diff the length of two substitutions.
-              (let* ([diff (- (length ss) (length s))]
+              (let* ([diff (- (length SS) (length S))]
                      ; Use the diff to get difference of the two lists.
-                     [extended-s (get-first-n-elements ss diff)]
+                     [extended-s (get-first-n-elements SS diff)]
                      ; Use the list to get bounded temporary variables.
                      [argv (list x ...)]
                      [bounded-vars (find-bound-vars argv extended-s)])
                 ; Check if any (x ...) got a value.
                 (if (null? bounded-vars)
                   ; if not keep running future sub-goals (g ...).
-                  ((fresh-t (x ...) g ...) nn ff ss)
+                  ((fresh-t (x ...) g ...) nn ff cc)
                   ; if so get all values of the variables.
                   ; check all future sub-goals (g ...) can be proven true for 
                   ; ALL values of bounded-vars.
                   (((forall (x ...) (g ...) bounded-vars) 
-                    (domain-values g0 bounded-vars cfs s)) n cfs s))))
-          ) n cfs s))]))))
+                    (domain-values g0 bounded-vars cfs c)) n cfs c))))
+          ) n cfs c))]))))
  
 (define-syntax bind*
   (syntax-rules ()
@@ -317,11 +328,11 @@
 (define-syntax conde
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (n cfs s) 
+     (lambdag@ (n cfs c) 
        (inc 
          (mplus* 
-           (bind* n cfs (g0 n cfs s) g ...)
-           (bind* n cfs (g1 n cfs s) g^ ...) ...))))))
+           (bind* n cfs (g0 n cfs c) g ...)
+           (bind* n cfs (g1 n cfs c) g^ ...) ...))))))
 
 ;;; Turns conjunction of goals (g0, g, ...) into disjunction of goals (g0; g; ...).
 (define-syntax conde-t
@@ -356,10 +367,10 @@
 (define-syntax conda
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (n cfs s)
+     (lambdag@ (n cfs c)
        (inc
-         (ifa n cfs ((g0 n cfs s) g ...)
-                   ((g1 n cfs s) g^ ...) ...))))))
+         (ifa n cfs ((g0 n cfs c) g ...)
+                   ((g1 n cfs c) g^ ...) ...))))))
  
 (define-syntax ifa
   (syntax-rules ()
@@ -375,10 +386,10 @@
 (define-syntax condu
   (syntax-rules ()
     ((_ (g0 g ...) (g1 g^ ...) ...)
-     (lambdag@ (n cfs s)
+     (lambdag@ (n cfs c)
        (inc
-         (ifu n cfs ((g0 n cfs s) g ...)
-                   ((g1 n cfs s) g^ ...) ...))))))
+         (ifu n cfs ((g0 n cfs c) g ...)
+                   ((g1 n cfs c) g^ ...) ...))))))
  
 (define-syntax ifu
   (syntax-rules ()
@@ -394,9 +405,9 @@
 (define-syntax project
   (syntax-rules ()
     ((_ (x ...) g g* ...)
-     (lambdag@ (n cfs s)
-       (let ((x (walk* x s)) ...)
-         ((fresh () g g* ...) n cfs s))))))
+     (lambdag@ (n cfs c : S P)
+       (let ((x (walk* x S)) ...)
+         ((fresh () g g* ...) n cfs c))))))
 
 (define succeed (== #f #f))
 
@@ -422,12 +433,12 @@
       (define name (lambda (params ...)
         ;;; Obtain a list of argument variables.
         (let ([argv (list params ...)])
-        (lambdag@ (n cfs s)
+        (lambdag@ (n cfs c : S P)
           ;;; Concrete the variables to values.
           ;;; If the variable has a substituition it will be replaced with a 
           ;;; value, otherwise it will be the parameter's name.
           (let* ([args (map (lambda (arg)
-                             (walk* arg s))
+                             (walk* arg S))
                            argv)]
                  [signature (list `name args)]
                  [record (element-of-set? signature cfs)])
@@ -439,12 +450,12 @@
               ;;; Positive loop. Minimal model semantics specified the positive
               ;;; loop should return false.
               [(and (= 0 diff) (even? n)) (mzero)]
-              [(and (= 0 diff) (odd? n)) (unit s)]
+              [(and (= 0 diff) (odd? n)) (unit c)]
               ;;; Negative loop. Stable model semantics specified the odd loop
               ;;; should return false and the even loop should return choice of
               ;;; true or false.
               [(and (not (= 0 diff)) (odd? n)) (mzero)]
-              [(and (not (= 0 diff)) (even? n)) (choice s mzero)]))
+              [(and (not (= 0 diff)) (even? n)) (choice c mzero)]))
             ;;; During the execution, the goal function picks the corresponding
             ;;; rule set based on the value of the negation counter.
             ;;;   n >= 0 and even, use original rules
@@ -452,4 +463,4 @@
             ((cond ((even? n) (fresh () exp ...))
                    ((odd? n) (complement exp ...))
                    (else fail))
-              n (expand-cfs signature n cfs) s))))))))))
+              n (expand-cfs signature n cfs) c))))))))))

@@ -14,22 +14,22 @@
       (edge x y)
       (noto (win y)))]))
 
-(test-check "testtpg.tex-1"   
+(test-check "testtpg.tex-a"   
 (run 1 (q) (win 'a) )
 
 (list `_.0))
 
-(test-check "testtpg.tex-1"   
+(test-check "testtpg.tex-b"   
 (run 1 (q) (win 'b) )
 
 (list `_.0))
 
-(test-check "testtpg.tex-1"   
+(test-check "testtpg.tex-c"   
 (run 1 (q) (win 'c) )
 
 (list `_.0))
 
-(test-check "testtpg.tex-1"   
+(test-check "testtpg.tex-d"   
 (run 1 (q) (win 'd) )
 
 `())
