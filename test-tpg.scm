@@ -14,22 +14,39 @@
       (edge x y)
       (noto (win y)))]))
 
-(test-check "testtpg.tex-a"   
+;;; Loop over negation.
+(test-check "testtpg.tex-1a"
 (run 1 (q) (win 'a) )
 
 (list `_.0))
 
-(test-check "testtpg.tex-b"   
+(test-check "testtpg.tex-1b"
 (run 1 (q) (win 'b) )
 
 (list `_.0))
 
-(test-check "testtpg.tex-c"   
+(test-check "testtpg.tex-1c"
 (run 1 (q) (win 'c) )
 
 (list `_.0))
 
-(test-check "testtpg.tex-d"   
+(test-check "testtpg.tex-1d"
 (run 1 (q) (win 'd) )
 
 `())
+
+;;; Partial result.
+(test-check "testtpg.tex-2ab"
+(run 1 (q) (win 'a) (win 'b))
+
+`())
+
+(test-check "testtpg.tex-2ac"
+(run 1 (q) (win 'a) (win 'c))
+
+(list `_.0))
+
+(test-check "testtpg.tex-2bc"
+(run 1 (q) (win 'c) (win 'b))
+
+(list `_.0))

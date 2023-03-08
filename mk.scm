@@ -42,6 +42,15 @@
 (define (expand-cfs k v cfs)
   (adjoin-set (make-record k v) cfs))
 
+;;; Record the procedure we produced the result.
+(define (ext-p name argv)
+  (lambdag@(n cfs c : S P)
+    ; At this point, all arguments have a substitution.
+    (let ((key (map (lambda (arg)
+                    (walk arg S)) argv) ))
+    ; So the partial result will record the predicate with actual values.
+    (list S (adjoin-set (make-record (list name key) n) P)))))
+
 (define walk
   (lambda (u S)
     (cond
@@ -435,13 +444,25 @@
         (let ([argv (list params ...)])
         (lambdag@ (n cfs c : S P)
           ;;; Concrete the variables to values.
-          ;;; If the variable has a substituition it will be replaced with a 
+          ;;; If the variable has a substitution it will be replaced with a 
           ;;; value, otherwise it will be the parameter's name.
           (let* ([args (map (lambda (arg)
                              (walk* arg S))
                            argv)]
                  [signature (list `name args)]
+                 [result (element-of-set? signature P)]
                  [record (element-of-set? signature cfs)])
+          ;;; Before the execution, check if we have computed the partial result.
+          (cond
+            ;;; If the partial result has the same parity as n, returning true.
+            ;;; Otherwise, returning false.
+            ;;; Since we only save the successfully proved result, for example,
+            ;;; we have proved "not a(5)" is true, the partial result would be
+            ;;; ( ((a 5) 1) ), the next time we are sovling "a(5)", we should
+            ;;; return false.
+            [(and result (even? (+ n (get-value result)))) (unit c)]
+            [(and result (odd? (+ n (get-value result)))) (mzero)]
+            (else
           ;;; Before the execution, check if the goal we have encountered during
           ;;; the solving process.
           (if (and record #t)
@@ -460,7 +481,10 @@
             ;;; rule set based on the value of the negation counter.
             ;;;   n >= 0 and even, use original rules
             ;;;   n >= 0 and odd, use complement rules
-            ((cond ((even? n) (fresh () exp ...))
-                   ((odd? n) (complement exp ...))
+            ;;; After the execution, we memorize the partial result. We can't 
+            ;;; use the signature for ext-p here, as the signature was obtained
+            ;;; before the execution of the goal function.
+            ((cond ((even? n) (fresh () exp ... (ext-p `name argv)))
+                   ((odd? n) (fresh () (complement exp ...) (ext-p `name argv)))
                    (else fail))
-              n (expand-cfs signature n cfs) c))))))))))
+              n (expand-cfs signature n cfs) c))))))))))))
