@@ -4237,6 +4237,7 @@ w)
     ((_ title tested-expression expected-result)
      (begin
        (cout "Testing " title nl)
+       (reset-program)
        (let* ((expected expected-result)
               (produced tested-expression))
          (or (equal? expected produced)

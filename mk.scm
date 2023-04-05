@@ -454,6 +454,10 @@
       (g succeed)
       ((== #f #f) fail))))
 
+(define program-rules `())
+
+(define reset-program (lambda () (set! program-rules `())))
+
 (define-syntax noto
   (syntax-rules ()
     ((noto (name params ...))
@@ -463,6 +467,11 @@
 (define-syntax defineo
   (syntax-rules ()
     ((_ (name params ...) exp ...)
+      (begin
+      ;;; Add rule to program-rules set.
+      (set! program-rules (adjoin-set (make-record `name 
+                                        (length (list `params ...)))
+                            program-rules))
       ;;; Define a goal function with the original rules "exp ...", and the 
       ;;; complement rules "complement exp ..."
       (define name (lambda (params ...)
@@ -514,4 +523,4 @@
                    ((even? n) (fresh () exp ... (ext-p `name argv)))
                    ((odd? n) (fresh () (complement exp ...) (ext-p `name argv)))
                    (else fail))
-              n (expand-cfs signature n cfs) c))))))))))))
+              n (expand-cfs signature n cfs) c)))))))))))))
