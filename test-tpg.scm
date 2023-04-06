@@ -50,3 +50,10 @@
 (run 1 (q) (win 'c) (win 'b))
 
 (list `_.0))
+
+
+(test-check "testtpg.tex-3"
+(sort compare-element (remove-duplicates 
+  (run* (q) (win q))))
+
+`(a b c))

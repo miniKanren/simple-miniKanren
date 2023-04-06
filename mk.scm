@@ -510,8 +510,8 @@
               ;;; Negative loop. Stable model semantics specified the odd loop
               ;;; should return false and the even loop should return choice of
               ;;; true or false.
-              [(and (not (= 0 diff)) (odd? n)) (mzero)]
-              [(and (not (= 0 diff)) (even? n)) (choice c mzero)]))
+              [(and (not (= 0 diff)) (odd? diff)) (mzero)]
+              [(and (not (= 0 diff)) (even? diff)) (choice c mzero)]))
             ;;; During the execution, the goal function picks the corresponding
             ;;; rule set based on the value of the negation counter.
             ;;;   n >= 0 and even, use original rules
