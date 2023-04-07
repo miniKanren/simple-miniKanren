@@ -1,6 +1,7 @@
 (load "test-naf.scm")
 
 ;;; Testing Two Person Game in stable-Kanren
+(reset-program)
 (defineo (edge x y)
   (conde
     [(== x 'b) (== y 'c)]

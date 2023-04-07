@@ -1,5 +1,6 @@
 (load "test-tpg.scm")
 
+(reset-program)
 (defineo (edge x y)
   (conde
     [(== x 'b) (== y 'c)]
@@ -46,6 +47,7 @@
 `(a b c))
 
 
+(reset-program)
 ; p(X) :- not q(X), a(X).
 (defineo (p x)
   (noto (q x))

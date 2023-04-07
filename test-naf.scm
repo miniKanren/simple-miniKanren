@@ -70,6 +70,7 @@
 (list `_.0))
 
 ;;; Stratified negation, loop and negation does not mixed together.
+(reset-program)
 ; a :- b.
 ; b :- a.
 ; c :- not a.
@@ -100,6 +101,7 @@
 ;;; For stratified negation, the loop can't has negation in it. We are using the
 ;;; loop part of the example to test stable-Kanren's ability to handle positive
 ;;; loop in the program.
+(reset-program)
 (defineo (reduce x y)
   (conde
     [(== x 'a) (== y 'b)]
