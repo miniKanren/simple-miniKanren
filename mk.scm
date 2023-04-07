@@ -156,8 +156,11 @@
      (take n
        (lambdaf@ ()
          ((fresh (x) g0 g ... 
-            (lambdag@ (negation-counter call-frame-stack c : S P)
-              (cons (reify x S) '())))
+          ; [ToDo] Performance optimization, current `check-all-rules` computes
+          ; all future answers, but we only need to verify one. Also, stratified
+          ; programs don't need such checking, we are still deciding which way
+          ; we want to choose.
+          (check-all-rules program-rules x))
           negation-counter call-frame-stack empty-c))))))
  
 (define take
@@ -226,6 +229,12 @@
 ;;; 
 ;;; > (run* (q) (fresh (x y) (edge x y) (== q `(,x ,y))))
 ;;; ((a b) (b c) (a d))
+;;;
+;;; If x is bounded in the current substitution, the program will get domain of
+;;; y based on that information.
+;;; > (run* (q) (fresh (x y) (== x 'a) (edge x y) (== q `(,x ,y))))
+;;; ((a b) (a d))
+;;; Here, (b c) will not show up.
 (define-syntax domain-values
   (syntax-rules ()
     [(_ g0 bounded-vars cfs s)
@@ -457,6 +466,73 @@
 (define program-rules `())
 
 (define reset-program (lambda () (set! program-rules `())))
+
+;;; Fetch one rule from the program rules set until the set is empty.
+(define (fetch-rule rules-set)
+  (if (null? rules-set)
+      #f
+      (car rules-set)))
+
+;;; Construct a list of n temporary variables.
+(define (construct-var-list n)
+  (if (= n 0)
+      `()
+      (cons (var (format "temp_~a" n)) (construct-var-list (- n 1)))))
+
+;;; Use the reduct program to get all value sets of a given goal with unbounded
+;;; variables. The reduct program is a special program without any negations.
+;;; The "take #f" is the underlying implementation of the "run*" interface,
+;;; please refer to the "run*"" implementation to learn more details.
+;;;
+;;; For example,
+;;;   A goal function edge(x, y)
+;;;   We do "(run* (tmp) (fresh (x y) (edge x y) (== tmp `(,x ,y))))"
+;;;
+;;; This function is different than the `domain-values` we used for getting
+;;; values under context settings. (n is always -2 v.s n = negation counter)
+(define (get-values goal vars)
+  ; [ToDo] If we get an empty set after filtering, we found an unsafe variable.
+  (sort compare-element (remove-duplicates 
+  (take #f 
+    (lambdaf@ ()
+      ((fresh (tmp)
+        (apply (eval goal) vars)
+        (== tmp vars)
+        (lambdag@ (n f c : S P)
+          (cons (reify tmp S) '())))
+        ground-program call-frame-stack empty-c))))))
+
+;;; For a normal program, we need to check all the rules, especially those with 
+;;; negation literals inside. So that we make sure we find a stable model.
+(define (check-all-rules rules-set x)
+  (lambdag@ (dummy frame final-c : S P)
+    (let ((rule (fetch-rule rules-set)))
+      (if (and rule #t)
+        ; [ToDo] Handle the propositional case here.
+        ; If the arity is 0, we don't need to get-values, we can run the
+        ; goal directly.
+        (let* ([goal (get-key rule)]
+               [arity (get-value rule)]
+               [vals (get-values goal (construct-var-list arity))])
+          (bind* dummy frame
+            ((check-rule-with-all-values goal vals) dummy frame final-c)
+            (check-all-rules (cdr rules-set) x)))
+        (cons (reify x S) '())))))
+
+;;; For each rule, we need to check all possible values of head variables. 
+(define (check-rule-with-all-values rule values)
+  (lambdag@(_ cfs c)
+    (if (null? values)
+      (unit c)
+      (inc
+        (mplus*
+          (bind* 0 cfs 
+            ((apply (eval rule) (car values)) 0 cfs c)
+            (check-rule-with-all-values rule (cdr values)))
+          (bind* 1 cfs 
+            ((apply (eval rule) (car values)) 1 cfs c)
+            (check-rule-with-all-values rule (cdr values)))
+        )))))
 
 (define-syntax noto
   (syntax-rules ()
