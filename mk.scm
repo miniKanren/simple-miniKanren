@@ -156,11 +156,32 @@
      (take n
        (lambdaf@ ()
          ((fresh (x) g0 g ... 
-          ; [ToDo] Performance optimization, current `check-all-rules` computes
-          ; all future answers, but we only need to verify one. Also, stratified
-          ; programs don't need such checking, we are still deciding which way
-          ; we want to choose.
-          (check-all-rules program-rules x))
+          ; [ToDo] Performance optimization, stratified programs don't need such
+          ; checking, we are still deciding which way we want to choose. If our
+          ; priority ordering algorithm can turn the BFS into DFS in a few
+          ; iterations on stratified programs, we saved extra computation on
+          ; determining whether the input program is stratified.
+          (lambdag@ (negation-counter cfs c : S P)
+            (if (null? 
+                ; `check-all-rules` computes all future answers, but we only
+                ; need to find one to make sure the partial answer is good.
+                ;
+                ; [ToDo] Performance optimization, currently, the computation is
+                ; evenly interleaved among different streams (BFS). And we can
+                ; use the information we collected from different streams to change
+                ; the priority of each stream. Eventually, the 100% one will
+                ; dominate (found the answer), and our computation becoming DFS.
+                ; Here is where the bottom-up CDNL could be helpful, we will
+                ; explore more later.
+                ;
+                ; Lastly, to show there is no answer, we must iterate through
+                ; all streams, but putting the unsatisfiable loop early would
+                ; help reduce the fan-out.
+                (take 1 
+                  (lambdaf@ ()
+                    ((check-all-rules program-rules x) negation-counter cfs c))))
+              (mzero)
+              (cons (reify x S) '()))))
           negation-counter call-frame-stack empty-c))))))
  
 (define take
