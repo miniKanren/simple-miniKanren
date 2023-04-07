@@ -144,6 +144,8 @@
 (list `_.0))
 
 ; test run* to get all answers.
+; [ToDo] Performance optimization.
+(reset-program)
 (test-check "testnaf.tex-10c"   
 (sort compare-element (remove-duplicates 
   (run* (q) (reducible q) )))
@@ -156,6 +158,8 @@
     [(reachable x y) (noto (reducible y))]))
 
 ; test final-SCC problem run* to get all final-SCC.
+; [ToDo] Performance optimization.
+(reset-program)
 (test-check "testnaf.tex-10d"   
 (sort compare-element (remove-duplicates 
   (run* (q) (fresh (x y) (fullyReduce x y) (== q `(,x ,y))) )))
