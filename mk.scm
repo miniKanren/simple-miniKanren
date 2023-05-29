@@ -607,6 +607,10 @@
               ;;; Negative loop. Stable model semantics specified the odd loop
               ;;; should return false and the even loop should return choice of
               ;;; true or false.
+              ;;; [ToDo] To make the solver fully declarative top-down, it is 
+              ;;; supposed to add a complementary version of the current goal
+              ;;; into the resolution process. We are using some bottom-up 
+              ;;; ideas in the global constraint checking `check-all-rules.`
               [(and (not (= 0 diff)) (odd? diff)) (mzero)]
               [(and (not (= 0 diff)) (even? diff)) (choice c mzero)]))
             ;;; During the execution, the goal function picks the corresponding
